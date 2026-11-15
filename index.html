@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="JARVIS">
+  <link rel="manifest" href="manifest.webmanifest">
+  <title>J.A.R.V.I.S.</title>
+  <style>
+    :root { color-scheme: dark; --cyan:#45d7ff; --blue:#087ba8; }
+    * { box-sizing:border-box; }
+    body {
+      margin:0; min-height:100vh; padding:24px 18px calc(28px + env(safe-area-inset-bottom));
+      background: radial-gradient(ellipse at 50% 25%, #102e48 0%, #071522 48%, #030810 100%);
+      color:#eaf8ff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      display:flex; justify-content:center;
+    }
+    main { width:min(100%,520px); text-align:center; }
+    .eyebrow { color:#7bcde8; letter-spacing:.32em; font-size:11px; margin-top:20px; }
+    h1 { font-size:clamp(32px,9vw,48px); letter-spacing:.18em; margin:8px 0 4px; font-weight:300; text-shadow:0 0 22px #24b9ed88; }
+    .subtitle { color:#8bb4c8; font-size:13px; letter-spacing:.12em; }
+    .reactor {
+      width:190px; height:190px; margin:38px auto 26px; border-radius:50%;
+      border:1px solid #4edcff88; display:grid; place-items:center; position:relative;
+      box-shadow:0 0 22px #00bfff33,inset 0 0 26px #00bfff22;
+      background:radial-gradient(circle,#0d3550 0%,#071a2a 56%,#06101b 72%);
+    }
+    .reactor:before,.reactor:after { content:""; position:absolute; border-radius:50%; border:1px solid #40d8ff66; }
+    .reactor:before { inset:12px; border-top-color:transparent; animation:spin 8s linear infinite; }
+    .reactor:after { inset:27px; border-bottom-color:transparent; animation:spin 5s linear infinite reverse; }
+    .core { width:64px;height:64px;border-radius:50%;background:#8cecff;box-shadow:0 0 16px #40dfff,0 0 48px #00aaff; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .status { color:#8eddf3; font-size:13px; min-height:20px; margin:12px 0 20px; }
+    .mic {
+      width:84px;height:84px;border-radius:50%;border:1px solid #4bdcff;background:#08263a;color:#9cecff;
+      font-size:30px;box-shadow:0 0 24px #00bfff33; cursor:pointer;
+    }
+    .mic:active { transform:scale(.97); }
+    .mic.listening { background:#0a4960; box-shadow:0 0 30px #00cfff99; }
+    .hint { color:#799bad;font-size:12px;margin:12px 0 25px; }
+    .panel { text-align:left; border:1px solid #2a7894aa; background:#071a29cc; border-radius:16px; padding:17px; margin-top:18px; }
+    .panel h2 { margin:0 0 13px; font-size:14px; letter-spacing:.12em; color:#8fe6ff; font-weight:500; }
+    label { display:block; color:#a9c9d8; font-size:12px; margin:12px 0 6px; }
+    select, input[type=range], textarea {
+      width:100%; accent-color:#39cfff;
+    }
+    select, textarea {
+      color:#eaf8ff;background:#0b2639;border:1px solid #28627b;border-radius:9px;padding:11px;font:inherit;
+    }
+    .range-line { display:flex; align-items:center; gap:12px; }
+    .range-line input { flex:1; }
+    .range-line output { color:#8fe6ff; min-width:36px; text-align:right; font-size:12px; }
+    .actions { display:flex; gap:10px; margin-top:15px; }
+    button.secondary {
+      flex:1; padding:12px 10px; color:#bdefff; border:1px solid #286f8b; border-radius:10px;
+      background:#0a2a3e; font-weight:600;
+    }
+    textarea { min-height:70px; resize:vertical; margin-top:8px; }
+    .send { width:100%; margin-top:9px; padding:13px; border:0; border-radius:10px; color:#04121b; background:#54dfff; font-weight:700; }
+    .log { text-align:left; margin-top:20px; color:#a9c9d8; font-size:13px; line-height:1.5; }
+    .log strong { color:#8fe6ff; }
+    .foot { color:#55788a; font-size:11px; margin-top:25px; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">SISTEMA DE INTELIGÊNCIA</div>
+  <h1>J.A.R.V.I.S.</h1>
+  <div class="subtitle">ASSISTENTE PESSOAL</div>
+
+  <div class="reactor" aria-hidden="true"><div class="core"></div></div>
+  <div id="status" class="status">Sistema pronto. Aguardando suas ordens.</div>
+  <button id="mic" class="mic" aria-label="Falar com JARVIS">🎙</button>
+  <div class="hint">Toque no microfone para falar com o JARVIS</div>
+
+  <section class="panel">
+    <h2>CONFIGURAÇÃO DE VOZ</h2>
+    <label for="voice">Voz em português</label>
+    <select id="voice"><option value="">Carregando vozes disponíveis…</option></select>
+
+    <label for="pitch">Gravidade da voz</label>
+    <div class="range-line"><input id="pitch" type="range" min="0.65" max="1.15" step="0.05" value="0.85"><output id="pitchOut">0.85</output></div>
+    <label for="rate">Velocidade da fala</label>
+    <div class="range-line"><input id="rate" type="range" min="0.75" max="1.1" step="0.05" value="0.92"><output id="rateOut">0.92</output></div>
+    <div class="actions">
+      <button class="secondary" id="testVoice">▶ Testar voz</button>
+      <button class="secondary" id="saveVoice">Salvar ajustes</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>COMANDO DE TEXTO</h2>
+    <textarea id="textInput" placeholder="Digite uma ordem para o JARVIS…"></textarea>
+    <button class="send" id="sendText">ENVIAR ORDEM</button>
+  </section>
+
+  <div class="log" id="log"><strong>JARVIS:</strong> Boa noite, senhor. Como posso ajudar?</div>
+  <div class="foot">A voz e o reconhecimento dependem dos recursos disponíveis no Safari/iPhone.</div>
+</main>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const status = $('status'), mic = $('mic'), log = $('log');
+  const synth = window.speechSynthesis;
+  let voices = [], recognition = null, listening = false;
+
+  function setStatus(t) { status.textContent = t; }
+  function addLog(who, text) { log.innerHTML = '<strong>' + who + ':</strong> ' + escapeHtml(text); }
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  function loadVoices() {
+    if (!synth) { $('voice').innerHTML = '<option>Voz não suportada neste navegador</option>'; return; }
+    voices = synth.getVoices();
+    const select = $('voice');
+    const previous = localStorage.getItem('jarvisVoiceURI');
+    select.innerHTML = '';
+    const pt = voices.filter(v => /^pt(-|_)/i.test(v.lang));
+    const candidates = pt.length ? pt : voices;
+    if (!candidates.length) {
+      select.innerHTML = '<option value="">Nenhuma voz disponível ainda</option>';
+      return;
+    }
+    candidates.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.voiceURI;
+      opt.textContent = `${v.name} (${v.lang})${v.default ? ' — padrão' : ''}`;
+      select.appendChild(opt);
+    });
+    const preferred = candidates.find(v => v.voiceURI === previous) ||
+      candidates.find(v => /^pt-BR$/i.test(v.lang)) ||
+      candidates.find(v => /brasil|brazil|portugu[eê]s/i.test(v.name)) ||
+      candidates[0];
+    if (preferred) select.value = preferred.voiceURI;
+  }
+
+  function selectedVoice() { return voices.find(v => v.voiceURI === $('voice').value) || null; }
+  function speak(text) {
+    if (!synth) { setStatus('A fala não é suportada neste navegador.'); return; }
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'pt-BR';
+    u.voice = selectedVoice();
+    u.pitch = Number($('pitch').value);
+    u.rate = Number($('rate').value);
+    u.volume = 1;
+    u.onstart = () => setStatus('JARVIS está falando…');
+    u.onend = () => setStatus('Pronto. Aguardando suas ordens.');
+    u.onerror = () => setStatus('Não foi possível reproduzir a voz. Tente outra voz.');
+    synth.speak(u);
+  }
+
+  function answer(input) {
+    const q = input.toLowerCase().trim();
+    let response;
+    if (!q) response = 'Não recebi o comando, senhor.';
+    else if (q.includes('seu nome') || q.includes('quem é você')) response = 'Sou o JARVIS, seu assistente pessoal. Às suas ordens, senhor.';
+    else if (q.includes('horas') || q.includes('que horas')) response = 'Agora são ' + new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) + '.';
+    else if (q.includes('data') || q.includes('dia é hoje')) response = 'Hoje é ' + new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) + '.';
+    else if (q.includes('olá') || q.includes('ola') || q.includes('bom dia') || q.includes('boa tarde') || q.includes('boa noite')) response = 'Saudações, senhor. Como posso ajudar?';
+    else if (q.includes('ajuda') || q.includes('comandos')) response = 'Por enquanto posso informar as horas, a data e responder a comandos básicos. A conexão com inteligência artificial ainda não está ativada.';
+    else response = 'Entendido, senhor. Ainda não estou conectado a uma inteligência artificial para responder a perguntas gerais. Posso executar os comandos básicos disponíveis.';
+    addLog('JARVIS', response);
+    speak(response);
+  }
+
+  function startRecognition() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { setStatus('Reconhecimento de voz indisponível. Use o campo de texto.'); return; }
+    if (listening && recognition) { try { recognition.stop(); } catch(e) {} return; }
+    recognition = new SR();
+    recognition.lang = 'pt-BR';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.onstart = () => { listening = true; mic.classList.add('listening'); setStatus('Estou ouvindo, senhor…'); };
+    recognition.onresult = e => {
+      const said = e.results[0][0].transcript;
+      addLog('VOCÊ', said);
+      answer(said);
+    };
+    recognition.onerror = e => {
+      setStatus(e.error === 'not-allowed' ? 'Permita o microfone nas configurações do Safari.' : 'Não consegui ouvir. Toque no microfone e tente novamente.');
+    };
+    recognition.onend = () => { listening = false; mic.classList.remove('listening'); };
+    try { recognition.start(); } catch(e) { setStatus('Não foi possível iniciar o microfone. Tente novamente.'); }
+  }
+
+  mic.addEventListener('click', startRecognition);
+  $('sendText').addEventListener('click', () => {
+    const value = $('textInput').value.trim();
+    if (!value) return;
+    addLog('VOCÊ', value); answer(value); $('textInput').value = '';
+  });
+  $('testVoice').addEventListener('click', () => speak('Boa noite, senhor. Sistemas operacionais. Estou à sua disposição.'));
+  $('saveVoice').addEventListener('click', () => {
+    localStorage.setItem('jarvisVoiceURI', $('voice').value || '');
+    localStorage.setItem('jarvisPitch', $('pitch').value);
+    localStorage.setItem('jarvisRate', $('rate').value);
+    setStatus('Preferências de voz salvas neste iPhone.');
+  });
+  $('pitch').addEventListener('input', e => $('pitchOut').value = Number(e.target.value).toFixed(2));
+  $('rate').addEventListener('input', e => $('rateOut').value = Number(e.target.value).toFixed(2));
+
+  const savedPitch = localStorage.getItem('jarvisPitch');
+  const savedRate = localStorage.getItem('jarvisRate');
+  if (savedPitch) $('pitch').value = savedPitch;
+  if (savedRate) $('rate').value = savedRate;
+  $('pitchOut').value = Number($('pitch').value).toFixed(2);
+  $('rateOut').value = Number($('rate').value).toFixed(2);
+  loadVoices();
+  if (synth && 'onvoiceschanged' in synth) synth.onvoiceschanged = loadVoices;
+})();
+</script>
+</body>
+</html>
